@@ -13,23 +13,23 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
 
-# -------- 2) 모델 본체 --------
-def make_xgb_classifier(**overrides) -> XGBClassifier:
-    """XGBoost 기본값 + 필요한 것만 덮어쓰기"""
-    params: Dict[str, Any] = dict(
-        n_estimators=300,
-        learning_rate=0.1,
-        max_depth=5,
+def build_model(**kwargs):
+    # 기본값
+    defaults = dict(
+        n_estimators=400,
+        learning_rate=0.05,
+        max_depth=4,
         subsample=0.8,
         colsample_bytree=0.8,
-        reg_lambda=1.0,
+        reg_lambda=1.0,  # L2
+        reg_alpha=0.0,  # L1 (이번에 문제된 키)
+        eval_metric="auc",
         random_state=42,
         n_jobs=-1,
-        tree_method="hist",    # 빠른 히스토그램 분할
-        eval_metric="logloss"  # 기본 지표(추후 AUC/PR-AUC로 교체 가능)
+        tree_method="hist"
     )
-    params.update(overrides)
-    return XGBClassifier(**params)
+    defaults.update(kwargs)     # YAML의 값으로 덮어쓰기
+    return XGBClassifier(**defaults)
 
 '''
 최적 성능을 위한 패러미터 값
@@ -47,9 +47,9 @@ model = XGBClassifier(
     n_jobs=8
 )'''
 
-
+"""
 def make_lgbm_classifier(**overrides) -> LGBMClassifier:
-    """LightGBM 기본값 + 필요한 것만 덮어쓰기"""
+    LightGBM 기본값 + 필요한 것만 덮어쓰기
     params: Dict[str, Any] = dict(
         n_estimators=300,
         learning_rate=0.1,
@@ -65,3 +65,4 @@ def make_lgbm_classifier(**overrides) -> LGBMClassifier:
     )
     params.update(overrides)
     return LGBMClassifier(**params)
+"""
