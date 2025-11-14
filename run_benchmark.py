@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import StratifiedKFold, train_test_split, cross_validate
 from sklearn.metrics import (
@@ -40,17 +41,24 @@ from imblearn.pipeline import Pipeline
 # -----------------------------
 # Utils
 # -----------------------------
+
+# 중복 생성 에러 방지
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
+# 실행 시각을 폴더/파일명에 작성
 def timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
+
+# config.yaml을 딕셔너리로 로드
 def load_config(path: str) -> Dict[str, Any]:
     import yaml
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+
+# 파이썬/넘파이 난수 고정
 def set_global_seed(seed: int) -> None:
     import random
     import numpy as np
@@ -61,11 +69,16 @@ def set_global_seed(seed: int) -> None:
 # -----------------------------
 # Data
 # -----------------------------
+
+# 데이터셋 로드 -> 타깃 컬럼 존재 체크 후 X/y 분리해서 반환
 def load_data(cfg: Dict[str, Any]) -> tuple[pd.DataFrame, pd.Series]:
     data_cfg = cfg["data"]
-    path = data_cfg["csv_path"]
+    path = data_cfg["file_path"]
     target = data_cfg["target"]
-    df = pd.read_csv(path)
+
+    # header=1 : 엑셀 파일의 두 번째 줄(index 1)을 헤더(컬럼명)로 읽어옴
+    df = pd.read_excel(path, header=1)
+
     if target not in df.columns:
         raise ValueError(f"target '{target}' not in columns: {list(df.columns)[:10]}...")
     y = df[target]
@@ -76,21 +89,21 @@ def load_data(cfg: Dict[str, Any]) -> tuple[pd.DataFrame, pd.Series]:
 # -----------------------------
 # Build pipeline components
 # -----------------------------
-def build_preprocessor(cfg: Dict[str, Any]):
-    """
-    common/preprocessing.py 에 다음 함수가 있다고 가정:
-      - build_preprocessor(cfg) -> sklearn/ColumnTransformer or Pipeline
-      - build_sampler(cfg) -> imblearn sampler or None (예: SMOTE/None)
 
-    프로젝트 구현체와 이름만 맞추면 됨.
-    """
+# preprocessing 파일을 모듈화해 import
+def build_preprocessor(cfg: Dict[str, Any], X: pd.DataFrame):
+
     prep_mod = importlib.import_module("common.preprocessing")
-    prep = prep_mod.build_preprocessor(cfg.get("preprocessing", {}))
+    prep = prep_mod.make_preprocessor(X)
     build_sampler = getattr(prep_mod, "build_sampler", None)
     sampler = build_sampler(cfg.get("preprocessing", {})) if callable(build_sampler) else None
     return prep, sampler
 
 
+
+# 모델 생성
+# config.yaml의 각 항목에 정의된 "module": "models.logistic" 같은 경로를 동적 임포트
+# 그 모듈의 build_model(**params)를 호출해 sklearn 호환 추정기를 반환
 def build_model(model_cfg: Dict[str, Any]):
     """
     models/*.py 파일은 반드시 build_model(params: dict | **kwargs) -> estimator 를 제공한다고 가정.
@@ -105,14 +118,16 @@ def build_model(model_cfg: Dict[str, Any]):
 # -----------------------------
 # Metrics helpers
 # -----------------------------
+
+# 메트릭 계산
 def compute_metrics(y_true, y_pred, y_proba=None) -> Dict[str, Any]:
     out = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "precision": float(precision_score(y_true, y_pred)),
-        "recall": float(recall_score(y_true, y_pred)),
-        "f1": float(f1_score(y_true, y_pred)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
         "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-        "classification_report": classification_report(y_true, y_pred),
+        "classification_report": classification_report(y_true, y_pred, zero_division=0),
         "pos_rate": float(np.mean(y_true)),
     }
     if y_proba is not None:
@@ -124,6 +139,8 @@ def compute_metrics(y_true, y_pred, y_proba=None) -> Dict[str, Any]:
 # -----------------------------
 # Train & Evaluate (Holdout)
 # -----------------------------
+
+# 홀드아웃 평가
 def run_holdout(pipe: Pipeline, X, y, eval_cfg: Dict[str, Any]) -> Dict[str, Any]:
     test_size = eval_cfg.get("test_size", 0.2)
     seed = eval_cfg.get("random_state", 42)
@@ -139,6 +156,9 @@ def run_holdout(pipe: Pipeline, X, y, eval_cfg: Dict[str, Any]) -> Dict[str, Any
 # -----------------------------
 # Train & Evaluate (CV)
 # -----------------------------
+
+# 교차검증(CV) 평가
+# 층화 K-fold로 수동 루프를 돌며 각 폴드에서 파이프라인 학습/예측.
 def run_cv(pipe: Pipeline, X, y, eval_cfg: Dict[str, Any]) -> Dict[str, Any]:
     n_splits = eval_cfg.get("cv", 5)
     seed = eval_cfg.get("random_state", 42)
@@ -172,25 +192,81 @@ def run_cv(pipe: Pipeline, X, y, eval_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # -----------------------------
+# Visualization
+# -----------------------------
+def visualize_results(results: List[Dict[str, Any]]) -> None:
+    """
+    결과 리스트를 요약 DataFrame으로 만들고,
+    주요 지표(ROC-AUC, PR-AUC, F1)를 막대그래프로 시각화한다.
+    """
+
+    def _get(m: Dict[str, Any], key: str):
+        # CV면 *_mean, holdout이면 key를 사용
+        return m.get(f"{key}_mean", m.get(key, np.nan))
+
+    rows = []
+    for r in results:
+        m = r["metrics"]
+        rows.append({
+            "model": r["model"],
+            "accuracy": _get(m, "accuracy"),
+            "precision": _get(m, "precision"),
+            "recall": _get(m, "recall"),
+            "f1": _get(m, "f1"),
+            "roc_auc": _get(m, "roc_auc"),
+            "pr_auc": _get(m, "pr_auc"),
+        })
+
+    df = pd.DataFrame(rows)
+
+    # 콘솔에 요약표
+    print("\n=== Summary (rounded) ===")
+    with pd.option_context("display.max_columns", None, "display.width", 120):
+        print(df.round(4).to_string(index=False))
+
+    # 막대그래프 유틸
+    def _plot_metric(metric: str, title: str):
+        sub = df[["model", metric]].copy().dropna()
+        if sub.empty:
+            return
+        sub = sub.sort_values(by=metric, ascending=False)
+        plt.figure()
+        plt.bar(sub["model"], sub[metric])
+        plt.title(title)
+        plt.xlabel("Model")
+        plt.ylabel(metric)
+        plt.xticks(rotation=20)
+        plt.tight_layout()
+
+    # 우선순위 높은 지표들
+    _plot_metric("roc_auc", "ROC-AUC by Model")
+    _plot_metric("pr_auc", "PR-AUC (Average Precision) by Model")
+    _plot_metric("f1", "F1 Score by Model")
+
+    plt.show()
+
+
+# -----------------------------
 # Runner
 # -----------------------------
 def main(cfg_path: str):
-    cfg = load_config(cfg_path)
-    set_global_seed(cfg.get("random_state", 42))
 
-    # 출력 폴더
-    out_dir = cfg.get("output_dir", "artifacts")
-    run_dir = os.path.join(out_dir, timestamp())
-    ensure_dir(run_dir)
+    # 설정 로딩
+    cfg = load_config(cfg_path)
+    # 시드 고정
+    set_global_seed(cfg.get("random_state", 42))
 
     # 데이터
     X, y = load_data(cfg)
 
     # 전처리/샘플러
-    prep, sampler = build_preprocessor(cfg)
+    prep, sampler = build_preprocessor(cfg, X)
 
     results = []
     for model_cfg in cfg["models"]:
+        # 특정 모델만 돌리고 싶을 때 임시로 사용
+        #if "neural_network" not in model_cfg["name"]:
+            #continue
         name = model_cfg["name"]
         clf = build_model(model_cfg)
 
@@ -206,32 +282,18 @@ def main(cfg_path: str):
         else:
             metrics = run_holdout(pipe, X, y, eval_cfg)
 
-        record = {"model": name, "module": model_cfg["module"], "params": model_cfg.get("params", {}), "metrics": metrics}
+        record = {
+            "model": name,
+            "module": model_cfg["module"],
+            "params": model_cfg.get("params", {}),
+            "metrics": metrics
+        }
         results.append(record)
         print(f"\n=== {name} ===")
         print(json.dumps(record["metrics"], indent=2, ensure_ascii=False))
 
-        # 각 모델 파이프라인 저장 (원한다면 마지막 fold 학습 파이프라인 저장)
-        try:
-            import joblib
-            joblib.dump(pipe, os.path.join(run_dir, f"{name}_pipeline.joblib"))
-        except Exception as e:
-            print(f"[WARN] Failed to save pipeline for {name}: {e}")
 
-    # 전체 결과 저장
-    with open(os.path.join(run_dir, "results.json"), "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    # 표 형태 CSV도 저장
-    flat_rows = []
-    for r in results:
-        flat = {"model": r["model"]}
-        for k, v in r["metrics"].items():
-            flat[k] = v
-        flat_rows.append(flat)
-    pd.DataFrame(flat_rows).to_csv(os.path.join(run_dir, "results.csv"), index=False, encoding="utf-8-sig")
-
-    print(f"\nArtifacts saved to: {run_dir}")
+    visualize_results(results)
 
 
 if __name__ == "__main__":
