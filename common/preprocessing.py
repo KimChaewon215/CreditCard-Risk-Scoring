@@ -8,8 +8,11 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.base import BaseEstimator, TransformerMixin
 
-
+# =========================================================
+# 1. data type별로 각 column 나누기
+# =========================================================
 # 연속형(스케일링 대상)
 CONTINUOUS_COLS = [
     "LIMIT_BAL",
@@ -32,7 +35,38 @@ ORDINAL_COLS = [
     "PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
 ]
 
+
+
+
+# =========================================================
+# 2. IQR 기반 outlier clipping 하기 위한 class 별도 정의
+# =========================================================
+class IQRClipper(BaseEstimator, TransformerMixin):
+    def __init__(self, factor: float = 1.5):
+        self.factor = factor
+
+    def fit(self, X, y=None):
+        # X: 2D array or DataFrame (continuous 컬럼만 들어온다고 가정)
+        X_df = pd.DataFrame(X)
+        q1 = X_df.quantile(0.25)
+        q3 = X_df.quantile(0.75)
+        iqr = q3 - q1
+
+        self.lower_ = q1 - self.factor * iqr
+        self.upper_ = q3 + self.factor * iqr
+        return self
+
+    def transform(self, X):
+        X_df = pd.DataFrame(X)
+        X_clipped = X_df.clip(lower=self.lower_, upper=self.upper_, axis=1)
+        return X_clipped.to_numpy()
+
+
+
+
+
 # sklearn 버전에 따라 OneHotEncoder의 인자가 달라 안정화 래퍼 사용
+# One-Hot_Encoding
 def _make_ohe():
     from sklearn.preprocessing import OneHotEncoder
     try:
@@ -106,6 +140,7 @@ def make_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     # 1) continuous
     continuous_proc = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="mean")),
+        ("iqr_clip", IQRClipper(factor=1.5)),
         ("scaler", StandardScaler()),
     ])
 
@@ -115,7 +150,7 @@ def make_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
         ("onehot", _make_ohe()),
     ])
 
-    # 3) ordinal (PAY_*): 결측만 최빈값으로 채우고 숫자는 그대로 사용
+    # 3) ordinal (PAY_*): 현재는 scaling 없이 원 숫자로 사용중
     ordinal_proc = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="most_frequent")),
         # 스케일링/원핫 안 하고 값 그대로
