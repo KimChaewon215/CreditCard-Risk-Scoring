@@ -101,7 +101,7 @@ def build_model(model_cfg: Dict[str, Any]):
 
 
 # ---------------------------------------------------------------
-# Threshold Tuning Curve
+# Best Threshold 찾기
 # ---------------------------------------------------------------
 
 def plot_threshold_curve(y_true, y_proba, model_name: str):
@@ -282,7 +282,7 @@ def visualize_results(results: List[Dict[str, Any]]) -> None:
     df = pd.DataFrame(rows)
 
     print("\n=== Summary (rounded) ===")
-    cols = ["model", "sampler", "pca", "cv_f1", "cv_recall", "cv_roc_auc", "test_f1", "test_recall", "test_roc_auc"]
+    cols = ["model", "sampler", "pca", "cv_f1", "cv_recall", "cv_roc_auc", "cv_pr_auc" , "test_f1", "test_recall", "test_roc_auc", "test_pr_auc"]
     with pd.option_context("display.max_columns", None, "display.width", 160):
         print(df[cols].round(4).to_string(index=False))
 
@@ -395,6 +395,11 @@ def main(cfg_path: str):
     # 4) 4개의 모델을 평가하는 loop
     for model_cfg in cfg["models"]:
         name = model_cfg["name"]
+
+        # 각 실험을 위해 특정 모델만 실행
+        if "xgb" not in name.lower() and "light" not in name.lower():
+            continue
+
         clf = build_model(model_cfg)
 
         # pipeline 단계 조립
@@ -449,7 +454,7 @@ def main(cfg_path: str):
         # sampler 이름 추출 (없으면 "None")
         sampler_name = sampler.__class__.__name__ if sampler else "None"
 
-        # PCA 적용 여부 저장 (원하는대로 'Used', 'None'으로 저장)
+        # PCA 적용 여부 저장 (사용 여부에 따라 각 'Used','None'으로 저장)
         pca_status = "Used" if pca else "None"
 
         record = {
