@@ -109,7 +109,7 @@ def main():
         'random_forest_baseline': {
             'model': RandomForestClassifier(random_state=seed),
             'params': {
-                'clf__n_estimators': [100, 200, 300, 400],
+                'clf__n_estimators': [50, 100, 200, 300, 400],
                 'clf__max_depth': [None, 10, 20],
                 'clf__min_samples_split': [2, 5],
                 'clf__class_weight': ['balanced', 'balanced_subsample', None]

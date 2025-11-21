@@ -9,12 +9,12 @@
     },
     "random_forest_baseline": {
         "best_params": {
-            "n_estimators": 100,
-            "min_samples_split": 5,
+            "n_estimators": 400,
+            "min_samples_split": 2,
             "max_depth": 10,
-            "class_weight": "balanced"
+            "class_weight": "balanced_subsample"
         },
-        "best_score": 0.5417063526151931
+        "best_score": 0.5405295824966424
     },
     "xgb_baseline": {
         "best_params": {
