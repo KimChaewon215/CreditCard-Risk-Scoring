@@ -22,7 +22,7 @@ preprocessing:
       random_state: 42
       k_neighbors: 5
   pca:
-    use: true
+    use: false
     n_components: 12
 
 # 평가 설정
@@ -31,7 +31,7 @@ evaluation:
   cv: 5
   test_size: 0.2
   random_state: 42
-  threshold: 0.35
+  threshold: 0.27
 
 # 모델들
 models:

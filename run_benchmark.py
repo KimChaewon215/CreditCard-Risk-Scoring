@@ -18,8 +18,6 @@ import json
 
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use('Agg')  # 화면에 띄우지 않고 내부적으로만 처리하도록 설정 (또는 'TkAgg')
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import StratifiedKFold, train_test_split
@@ -424,22 +422,39 @@ def main(cfg_path: str, use_tuned: bool = False):
         #특정 모델만 돌리고 싶을 경우 이 곳의 주석 해제 및 변경
         #if name != "random_forest_baseline":
          #       continue
-        # =========================================================
         # [NEW] 튜닝 파라미터 적용 로직 (딕셔너리에 값이 있을 때만)
         # =========================================================
-        # 만약 JSON 파일에 해당 모델 이름(name)이 있다면 파라미터를 덮어씌웁니다.
         if name in tuned_params_dict:
             print(f"    [{name}] 튜닝된 최적 파라미터를 적용합니다.")
 
-            # 기존 config의 params를 가져와서
             current_params = model_cfg.get("params", {})
-
-            # 튜닝된 값으로 업데이트 (덮어쓰기)
-            # tuned_params_dict[name]['best_params'] 구조라고 가정
             best_p = tuned_params_dict[name].get("best_params", {})
-            current_params.update(best_p)
 
-            # 모델 설정에 다시 저장
+            # ★ neural_network_baseline 은 Keras 모델이라
+            #    MLP 튜닝 결과를 Keras 파라미터 이름으로 매핑해준다.
+            if name == "neural_network_baseline":
+                mapped = {}
+
+                # 1) hidden_layer_sizes -> hidden_units
+                if "hidden_layer_sizes" in best_p:
+                    mapped["hidden_units"] = list(best_p["hidden_layer_sizes"])
+
+                # 2) learning_rate_init -> learning_rate
+                if "learning_rate_init" in best_p:
+                    mapped["learning_rate"] = best_p["learning_rate_init"]
+
+                # 3) batch_size -> batch_size
+                if "batch_size" in best_p:
+                    mapped["batch_size"] = best_p["batch_size"]
+
+                # alpha, activation 은 현재 Keras 코드에서 사용하지 않으므로 일단 무시
+
+                current_params.update(mapped)
+
+            else:
+                # 다른 모델(logistic, rf, xgb 등)은 그대로 키를 쓴다
+                current_params.update(best_p)
+
             model_cfg["params"] = current_params
 
         else:
