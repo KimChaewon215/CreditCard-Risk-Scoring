@@ -1,20 +1,24 @@
-# nn_param_sweep.py
 """
 Neural Network(MLPClassifier) 하이퍼파라미터 민감도 실험용 스크립트
 
 - 공유용 tuning.py 건드리지 않고
-- NN 하나만, 파라미터를 한 번에 하나씩 바꿔가며 CV F1을 비교
+- NN 하나만, 파라미터를 한 번에 하나씩 바꿔가며
+  CV PR-AUC(average precision)을 비교
 """
 
 import pandas as pd
 import numpy as np
 
+
+
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import average_precision_score
 
-# 네 프로젝트 구조에 맞게 import (tuning.py에서 쓰던 그대로)
 from common import preprocessing as prep_mod
+
+import matplotlib.pyplot as plt
 
 
 DATA_PATH = "default of credit card clients.xls"
@@ -23,8 +27,6 @@ SEED = 42
 
 
 def load_data_and_preprocess():
-    """엑셀 로드 + clean_data + 전처리 파이프라인(preprocessor)까지 준비."""
-    # 엑셀 로드 (tuning.py랑 동일하게 header=1)
     df = pd.read_excel(DATA_PATH, header=1)
 
     if TARGET_COL not in df.columns:
@@ -46,7 +48,7 @@ def load_data_and_preprocess():
 def eval_mlp(params, X, y, preprocessor, cv_splits=3, seed=SEED):
     """
     주어진 MLP 하이퍼파라미터(params)로
-    Pipeline(prep -> MLP) 구성해서 F1 CV 점수 평가.
+    Pipeline(prep -> MLP) 구성해서 CV PR-AUC(average precision) 평가.
     """
     clf = MLPClassifier(
         random_state=seed,
@@ -62,10 +64,126 @@ def eval_mlp(params, X, y, preprocessor, cv_splits=3, seed=SEED):
     ])
 
     cv = StratifiedKFold(n_splits=cv_splits, shuffle=True, random_state=seed)
-    scores = cross_val_score(pipe, X, y, scoring="f1", cv=cv, n_jobs=-1)
+
+    # scikit-learn 버전 이슈 피하려고, make_scorer 안 쓰고
+    # "estimator, X, y" 형태의 커스텀 스코어 함수를 직접 정의
+    def pr_auc_scorer(estimator, X_val, y_val):
+        if hasattr(estimator, "predict_proba"):
+            proba = estimator.predict_proba(X_val)[:, 1]
+        elif hasattr(estimator, "decision_function"):
+            proba = estimator.decision_function(X_val)
+        else:
+            proba = estimator.predict(X_val)
+        return average_precision_score(y_val, proba)
+
+    scores = cross_val_score(
+        pipe,
+        X,
+        y,
+        scoring=pr_auc_scorer,  # callable 그대로 전달
+        cv=cv,
+        n_jobs=-1,
+    )
 
     return scores.mean(), scores.std()
 
+def plot_sweep_results(results):
+    """하이퍼파라미터별 PR-AUC 민감도 플롯 그리기 (Fig1~Fig5)."""
+
+    # -----------------------------
+    # Fig 1. hidden_layer_sizes vs PR-AUC
+    # -----------------------------
+    param_name = "hidden_layer_sizes"
+    if param_name in results:
+        vals = results[param_name]
+        x_labels = [str(v[0]) for v in vals]   # '(64,)', '(128, 64)' 이런 식
+        means = [v[1] for v in vals]
+
+        plt.figure(figsize=(8, 4))
+        plt.plot(x_labels, means, marker="o")
+        plt.title("Fig 1. Hidden layer sizes vs PR-AUC")
+        plt.xlabel("hidden_layer_sizes")
+        plt.ylabel("PR-AUC")
+        plt.ylim(0.53, 0.56)  # 대략 범위 맞춰주면 변화가 더 잘 보임
+        plt.grid(True, axis="y", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+
+    # -----------------------------
+    # Fig 2. alpha (log scale) vs PR-AUC
+    # -----------------------------
+    param_name = "alpha"
+    if param_name in results:
+        vals = results[param_name]
+        x = [v[0] for v in vals]   # 실제 alpha 값 (float)
+        means = [v[1] for v in vals]
+
+        plt.figure(figsize=(8, 4))
+        plt.plot(x, means, marker="o")
+        plt.xscale("log")
+        plt.title("Fig 2. Alpha (L2 regularization) vs PR-AUC")
+        plt.xlabel("alpha (log scale)")
+        plt.ylabel("PR-AUC")
+        plt.grid(True, which="both", axis="both", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+
+    # -----------------------------
+    # Fig 3. batch_size vs PR-AUC
+    # -----------------------------
+    param_name = "batch_size"
+    if param_name in results:
+        vals = results[param_name]
+        x = [v[0] for v in vals]      # 64, 128, 256
+        means = [v[1] for v in vals]
+
+        plt.figure(figsize=(6, 4))
+        plt.bar([str(v) for v in x], means)
+        plt.title("Fig 3. Batch size vs PR-AUC")
+        plt.xlabel("batch_size")
+        plt.ylabel("PR-AUC")
+        plt.ylim(0.54, 0.555)
+        plt.grid(True, axis="y", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+
+    # -----------------------------
+    # Fig 4. activation vs PR-AUC
+    # -----------------------------
+    param_name = "activation"
+    if param_name in results:
+        vals = results[param_name]
+        x_labels = [str(v[0]) for v in vals]   # 'relu', 'tanh'
+        means = [v[1] for v in vals]
+
+        plt.figure(figsize=(5, 4))
+        plt.bar(x_labels, means)
+        plt.title("Fig 4. Activation function vs PR-AUC")
+        plt.xlabel("activation")
+        plt.ylabel("PR-AUC")
+        plt.ylim(0.548, 0.552)  # 거의 비슷해서 범위 좁게 잡아줌
+        plt.grid(True, axis="y", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        plt.show()
+
+    # -----------------------------
+    # Fig 5. learning_rate_init vs PR-AUC
+    # -----------------------------
+    param_name = "learning_rate_init"
+    if param_name in results:
+        vals = results[param_name]
+        x = [v[0] for v in vals]
+        means = [v[1] for v in vals]
+
+        plt.figure(figsize=(8, 4))
+        plt.plot(x, means, marker="o")
+        plt.xscale("log")
+        plt.title("Fig 5. Learning rate vs PR-AUC")
+        plt.xlabel("learning_rate_init (log scale)")
+        plt.ylabel("PR-AUC")
+        plt.grid(True, which="both", axis="both", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        plt.show()
 
 def main():
     print(">>> 데이터 로드 + 전처리 준비 중...")
@@ -74,7 +192,7 @@ def main():
 
     # -------------------------------------------------
     # 1) 기준(base) 하이퍼파라미터 설정
-    #    -> 예전에 RandomizedSearch로 괜찮게 나왔던 값 사용
+    #    -> RandomizedSearch로 얻은 최적 값 기준
     # -------------------------------------------------
     base_params = {
         "hidden_layer_sizes": (256, 128, 64),
@@ -142,15 +260,15 @@ def main():
             params = base_params.copy()
             params[param_name] = val  # 이 파라미터만 바꾼다
 
-            mean_f1, std_f1 = eval_mlp(params, X, y, preprocessor)
+            mean_pr, std_pr = eval_mlp(params, X, y, preprocessor)
 
-            param_results.append((val, mean_f1, std_f1))
-            print(f"{param_name}={val} -> F1 = {mean_f1:.4f} ± {std_f1:.4f}")
+            param_results.append((val, mean_pr, std_pr))
+            print(f"{param_name}={val} -> PR-AUC = {mean_pr:.4f} ± {std_pr:.4f}")
 
         results[param_name] = param_results
 
     # -------------------------------------------------
-    # 4) 원하면 CSV로 저장해서 엑셀/노션에 붙일 수도 있음
+    # 4) CSV로 저장 (엑셀/노션 등에서 보기 좋게)
     # -------------------------------------------------
     import csv
     from pathlib import Path
@@ -162,11 +280,14 @@ def main():
         csv_path = out_dir / f"{param_name}_sweep.csv"
         with csv_path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow([param_name, "mean_f1", "std_f1"])
-            for val, mean_f1, std_f1 in param_results:
-                writer.writerow([repr(val), mean_f1, std_f1])
+            writer.writerow([param_name, "mean_pr_auc", "std_pr_auc"])
+            for val, mean_pr, std_pr in param_results:
+                writer.writerow([repr(val), mean_pr, std_pr])
 
         print(f"[저장] {param_name} sweep 결과 -> {csv_path}")
+
+        # 5) 결과 플롯 그리기
+    plot_sweep_results(results)
 
 
 if __name__ == "__main__":

@@ -419,6 +419,9 @@ def main(cfg_path: str, use_tuned: bool = False):
     for model_cfg in cfg["models"]:
         name = model_cfg["name"]
 
+        if name != "neural_network_baseline":
+            continue
+
         #특정 모델만 돌리고 싶을 경우 이 곳의 주석 해제 및 변경
         #if name != "random_forest_baseline":
          #       continue
