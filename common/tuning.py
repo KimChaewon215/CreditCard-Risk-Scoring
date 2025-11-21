@@ -113,7 +113,7 @@ def main():
         # 일단 이름만이라도 맞춰서 매칭되게 합니다.
         'neural_network_baseline': {
             'model': MLPClassifier(
-                random_state=42,
+                random_state=50,
                 early_stopping=True,
                 max_iter=300,      # 너무 작으면 수렴 못해서 warning 뜰 수 있어서 넉넉하게
                 solver="adam"      # 기본값, 신경망에서 거의 표준
