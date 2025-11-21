@@ -8,7 +8,7 @@ output_dir: artifacts
 
 # 데이터 설정
 data:
-  file_path: "default of credit card clients.xls"    # 너희 CSV 경로
+  file_path: "default of credit card clients.xls"    # CSV 경로
   target: "default payment next month"
 
 # 전처리/샘플링 (common/preprocessing.py에서 해석)
@@ -24,7 +24,7 @@ preprocessing:
       k_neighbors: 5     # smote에서만 사용하는 값이기에 cluster centroids를 사용할 때는 제거해버림
   # PCA 옵션
   pca:
-    use: true
+    use: false
     n_components: 12 # 주성분 개수 - 주성분 12개는 원 데이터의 99%를 반영한다.
 
 # 평가 설정
@@ -33,7 +33,7 @@ evaluation:
   cv: 5             # mode=cv일 때만 사용
   test_size: 0.2    # mode=holdout일 때만 사용
   random_state: 42
-  threshold: 0.35
+  threshold: 0.32
 
 # 실험할 모델들 (순서대로 실행)
 models:
@@ -57,17 +57,36 @@ models:
       random_state: 42
 
   - name: xgb_baseline
-    module: models.xgb  # 같은 파일에서 xgboost 반환하도록 구현해둔 경우
+    module: models.xgb
     params:
-      n_estimators: 400
-      max_depth: 5
-      learning_rate: 0.05
+      n_estimators: 1500
+      max_depth: 6
+      learning_rate: 0.03
+      min_child_weight: 1
+      gamma: 0
       subsample: 0.8
       colsample_bytree: 0.8
-      reg_lambda: 1.0
+      reg_lambda: 0.0
       reg_alpha: 0.0
       random_state: 42
       n_jobs: -1
+      scale_pos_weight: 2.0
+
+  - name: lightGBM_baseline
+    module: models.lightGBM
+    params:
+      n_estimators: 1000
+      learning_rate: 0.03
+      max_depth: 6
+      num_leaves: 64    # 잎사귀 개수 31 -> 20 -> 64
+      min_child_samples: 20
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_lambda: 0.0
+      reg_alpha: 0.0
+      random_state: 42
+      n_jobs: 1
+      scale_pos_weight: 2.0
 
   - name: neural_network_baseline
     module: models.neural_network           # keras/tf 모델 빌더 (sklearn wrapper 사용 권장)

@@ -46,23 +46,3 @@ model = XGBClassifier(
     random_state=0,
     n_jobs=8
 )'''
-
-"""
-def make_lgbm_classifier(**overrides) -> LGBMClassifier:
-    LightGBM 기본값 + 필요한 것만 덮어쓰기
-    params: Dict[str, Any] = dict(
-        n_estimators=300,
-        learning_rate=0.1,
-        max_depth=5,        # leaf-wise라 과적합 방지에 유리
-        num_leaves=31,      # 트리 복잡도 핵심 파라미터
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_lambda=1.0,
-        random_state=42,
-        n_jobs=-1,
-        objective="binary",
-        metric="binary_logloss"
-    )
-    params.update(overrides)
-    return LGBMClassifier(**params)
-"""
