@@ -285,7 +285,7 @@ def visualize_results(results: List[Dict[str, Any]]) -> None:
     df = pd.DataFrame(rows)
 
     print("\n=== Summary (rounded) ===")
-    cols = ["model", "sampler", "pca", "cv_f1", "cv_recall", "cv_roc_auc", "test_f1", "test_recall", "test_roc_auc"]
+    cols = ["model", "sampler", "pca", "cv_f1", "cv_recall", "cv_roc_auc", "cv_pr_auc" , "test_f1", "test_recall", "test_roc_auc", "test_pr_auc"]
     with pd.option_context("display.max_columns", None, "display.width", 160):
         print(df[cols].round(4).to_string(index=False))
 
@@ -421,9 +421,9 @@ def main(cfg_path: str, use_tuned: bool = False):
     for model_cfg in cfg["models"]:
         name = model_cfg["name"]
 
-        #특정 모델만 돌리고 싶을 경우 이 곳의 주석 해제 및 변경
-        #if name != "random_forest_baseline":
-         #       continue
+        # 각 실험을 위해 특정 모델만 실행
+        if "xgb" not in name.lower() and "light" not in name.lower():
+            continue
         # =========================================================
         # [NEW] 튜닝 파라미터 적용 로직 (딕셔너리에 값이 있을 때만)
         # =========================================================

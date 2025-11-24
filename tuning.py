@@ -11,6 +11,7 @@ import sys
 
 # 모델 및 유틸리티 라이브러리
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV
 # from sklearn.preprocessing import StandardScaler # 이제 ColumnTransformer 내에서 처리되므로 제거했습니다
 from sklearn.pipeline import Pipeline
 
@@ -19,6 +20,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
 
 # common/preprocessing.py에서 전처리 유틸리티 임포트
 from common import preprocessing as prep_mod
@@ -116,19 +118,51 @@ def main():
             }
         },
 
+
+
         # 3. xgb_baseline
         'xgb_baseline': {
-            'model': XGBClassifier(eval_metric='logloss', random_state=seed, use_label_encoder=False),
+            'model': XGBClassifier(
+                eval_metric='logloss',
+                random_state=seed,  # == 42
+                n_estimators=400,
+                learning_rate=0.05,
+                subsample=0.8,
+                max_depth=3,
+                min_child_weight=3,
+                colsample_bytree=0.8,
+                reg_lambda=0.1,
+                gamma=0.05,
+                n_jobs=-1
+            ),
             'params': {
-                'clf__n_estimators': [100, 300, 400],
-                'clf__learning_rate': [0.01, 0.05, 0.1],
-                'clf__max_depth': [3, 5, 7],
-                'clf__reg_lambda': [0.1, 1.0, 10.0],
-                'clf__scale_pos_weight': [1, scale_pos_weight_val]
+                'clf__scale_pos_weight': [4.2, 4.4, 4.6]
             }
         },
 
-        # 4. neural_network_baseline (MLPClassifier)
+        # 4. lightgbm_baseline
+        'lightGBM_baseline': {
+            'model': LGBMClassifier(
+                random_state=seed,
+                n_jobs=-1,
+                verbose=-1,
+                colsample_bytree=0.8,
+                learning_rate=0.01,
+                n_estimators=500,
+                subsample=1.0,
+                reg_lambda=1.0,
+                reg_alpha=0.0,
+                max_depth=6,
+                num_leaves=31,
+                min_child_samples=10,
+                feature_fraction=0.7
+            ),
+            'params': {
+                'clf__scale_pos_weight': [3.2, 3.4, 3.6]
+            }
+        },
+
+        # 5. neural_network_baseline (MLPClassifier)
         'neural_network_baseline': {
             'model': MLPClassifier(
                 random_state=seed,
@@ -174,7 +208,15 @@ def main():
     # ---------------------------------------------------------
     # 튜닝 루프 실행
     # ---------------------------------------------------------
+
+    target_models = ["xgb_baseline", "lightGBM_baseline"]
+
+
     for model_name, model_conf in model_configs.items():
+        # 특정 모델만 튜닝
+        if model_name not in target_models:
+            continue
+
         print(f"\n>>> Tuning {model_name} ...")
 
         # 파이프라인: 전처리 (ColumnTransformer) -> 모델
@@ -183,15 +225,24 @@ def main():
             ('clf', model_conf['model'])
         ])
 
-        search = RandomizedSearchCV(
+        '''search = RandomizedSearchCV(
             pipeline,
             model_conf['params'],
             n_iter=10,  # 랜덤 탐색 횟수
-            scoring='f1',  # 평가 지표
+            scoring='average_precision',  # 평가 지표
             cv=3,
             n_jobs=-1,
             verbose=1,
             random_state=seed
+        )'''
+
+        search = GridSearchCV(
+            pipeline,
+            model_conf['params'],  # 이제 이건 param_grid 역할
+            scoring='average_precision',
+            cv=3,
+            n_jobs=-1,
+            verbose=1
         )
 
         # 전처리까지 포함된 파이프라인으로 훈련 데이터에 fit

@@ -14,6 +14,7 @@ def build_model(**kwargs):
         reg_alpha=0.0,  # L1 Regularization
         random_state=42,
         n_jobs=2,
+        verbose=-1
 
         # LightGBM 전용 추가 옵션 (필요하면 주석 해제)
         # importance_type='gain',  # 변수 중요도 볼 때 gain 기준이 더 정확할 때가 많음

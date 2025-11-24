@@ -1,43 +1,14 @@
 {
-    "logistic_l2": {
-        "best_params": {
-            "penalty": "l2",
-            "class_weight": "balanced",
-            "C": 0.01
-        },
-        "best_score": 0.533161237335189
-    },
-    "random_forest_baseline": {
-        "best_params": {
-            "n_estimators": 100,
-            "min_samples_split": 5,
-            "max_depth": 10,
-            "class_weight": "balanced"
-        },
-        "best_score": 0.5417063526151931
-    },
     "xgb_baseline": {
         "best_params": {
-            "scale_pos_weight": 3.481453444360333,
-            "reg_lambda": 0.1,
-            "n_estimators": 100,
-            "max_depth": 3,
-            "learning_rate": 0.1
+            "scale_pos_weight": 4.2
         },
-        "best_score": 0.5387859055286282
+        "best_score": 0.5573308000579394
     },
-    "neural_network_baseline": {
+    "lightGBM_baseline": {
         "best_params": {
-            "learning_rate_init": 0.00031622776601683794,
-            "hidden_layer_sizes": [
-                256,
-                128,
-                64
-            ],
-            "batch_size": 256,
-            "alpha": 1e-05,
-            "activation": "relu"
+            "scale_pos_weight": 3.2
         },
-        "best_score": 0.4886422152735847
+        "best_score": 0.5589492597695371
     }
 }
