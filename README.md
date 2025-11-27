@@ -1,10 +1,7 @@
 # CreditCard-Risk-Scoring
-📌 Default Credit Card Clients — 신용카드 연체 예측 모델 비교 연구
-
 2025 홍익대학교 기계학습기초 팀 프로젝트
 
-팀원: 김서현, 박병선, 박채아, 김채원
-
+📌 Default Credit Card Clients — 신용카드 연체 예측 모델 비교 연구
 
 ## 1. 프로젝트 개요
 
@@ -23,7 +20,7 @@
 
 - Class Weight 기반의 모델 가중치 조정
 
-이 두 전략이 서로 다른 모델에서 어떤 영향을 주는지 정량적으로 비교하는 것이 핵심 목표였습니다.
+이 두 전략이 서로 다른 모델에서 어떤 영향을 주는지 정량적으로 비교하는 것이 핵심 목표입니다.
 
 
 ## 2. 실험 파이프라인 설계
@@ -84,8 +81,7 @@ ml-project/
 
 ## 5. 검증 전략
 
-약 30,000건 규모의 데이터를 고려하여,
-데이터 분포를 유지하면서 신뢰도를 확보하기 위해 📌 Stratified 5-Fold Cross Validation을 적용했습니다.
+약 30,000건 규모의 데이터를 고려하여, 데이터 분포를 유지하면서 신뢰도를 확보하기 위해 📌 Stratified 5-Fold Cross Validation을 적용했습니다.
 
 
 
@@ -105,111 +101,111 @@ ml-project/
 튜닝 기준은 PR-AUC, 최종 성능 평가는 모든 모델에 대해 최적 Threshold 적용 F1-score로 비교했습니다.
 
 ## 7. 모델별 실험 결과 및 주요 인사이트
+
 ◆ 7-1. Logistic Regression
 
+| 단계                 | F1-score   |
+| ------------------ | ---------- |
+| Baseline           | 0.4804     |
+| RandomizedSearchCV | **0.5320** |
+| Fine-Tuning        | 0.5262     |
+| SMOTE              | 0.5296     |
+| Cluster Centroids  | ↓ 0.4575   |
 
-단계	F1-score
-Baseline	0.4804
-RandomizedSearchCV	0.5320
-Fine-Tuning	0.5262
-SMOTE	0.5296
-Cluster Centroids	↓ 0.4575
 
 ✔ 핵심 인사이트
 
-선형 모델은 결정 경계가 단순해, 소수 클래스 증강(SMOTE)을 했을 때 유일하게 성능이 상승.
+- 선형 모델은 결정 경계가 단순해, 소수 클래스 증강(SMOTE)을 했을 때 유일하게 성능이 상승함.
 
-Cluster Centroids는 정상 고객 정보가 과도하게 손실되어 성능 급락.
+- Cluster Centroids는 정상 고객 정보가 과도하게 손실되어 성능 급락함.
 
-Logistic Regression에서는 Threshold 최적화 + 미세 조정(C, class_weight) 조합이 가장 효과적.
+- Logistic Regression에서는 Threshold 최적화 + 미세 조정(C, class_weight) 조합이 가장 효과적임.
+
 
 ◆ 7-2. Random Forest
 
+| 단계                 | F1-score   |
+| ------------------ | ---------- |
+| Baseline           | 0.5198     |
+| RandomizedSearchCV | **0.5604** |
+| Fine-Tuning        | 0.5421     |
+| SMOTE              | 0.4915     |
+| Cluster Centroids  | ↓ 0.4255   |
 
-단계	F1-score
-Baseline	0.5198
-RandomizedSearchCV (PR-AUC 기반)	0.5604 (팀 전체 1위)
-SMOTE / CC	성능 급락
 
 ✔ 핵심 인사이트
 
-Random Forest는 데이터 증강보다 class_weight 조정만으로도 충분히 불균형을 해결함.
+- Random Forest는 데이터 증강보다 class_weight 조정만으로도 충분히 불균형을 해결함.
 
-SMOTE는 오히려 precision을 크게 떨어뜨리는 노이즈로 작용.
+- SMOTE는 오히려 precision을 크게 떨어뜨리는 노이즈로 작용.
 
-PR-AUC 기준 RandomizedSearch → Threshold Optimization 조합이 가장 효과적.
+- PR-AUC 기준 RandomizedSearch → Threshold Optimization 조합이 가장 효과적.
+
 
 ◆ 7-3. Boosting Models (XGBoost & LightGBM)
 
+| 단계                 | F1-score   |
+| ------------------ | ---------- |
+| Baseline           | 0.5418     |
+| RandomizedSearchCV | **0.5503** |
+| Fine-Tuning        | 0.5399     |
+| SMOTE              | 0.5151     |
+| Cluster Centroids  | ↓ 0.4142   |
+
 ✔ 핵심 발견: 트리 깊이(depth)가 불균형 학습에 결정적인 영향
 
-depth가 깊으면 → 다수 클래스 학습에만 치우침
-
-depth를 3으로 얕게 + scale_pos_weight 강화 →
-소수 클래스(연체자) 패턴 학습에 집중하며 성능 최대화
+- depth가 깊으면 → 다수 클래스 학습에만 치우침.
+- depth를 3으로 얕게 + scale_pos_weight 강화 → 소수 클래스(연체자) 패턴 학습에 집중하며 성능 최대화.
 
 ✔ Boosting의 특성
 
-오답(Residual)에 집중해 가중치를 조정하는 구조
+- 오답(Residual)에 집중해 가중치를 조정하는 구조. 즉, 희소한 연체자 패턴 학습에 매우 유리.
+- 성능은 Random Forest와 매우 비슷한 수준으로 수렴했으며, 특히 Recall 성능은 RF보다 높았음.
 
-즉, 희소한 연체자 패턴 학습에 매우 유리
-
-성능은 Random Forest와 매우 비슷한 수준으로 수렴했으며,
-특히 Recall 성능은 RF보다 높았음.
 
 ◆ 7-4. Neural Network (MLP)
-단계	F1-score
-Baseline + Threshold tuning	0.5356
-RandomizedSearchCV	0.5473
-SMOTE / CC	0.41~0.43 (Precision 붕괴)
+
+| 단계                 | F1-score   |
+| ------------------ | ---------- |
+| Baseline           | 0.5356     |
+| RandomizedSearchCV | **0.5473** |
+| Fine-Tuning        | 0.5453     |
+| SMOTE              | 0.4381     |
+| Cluster Centroids  | ↓ 0.4156   |
+
 
 ✔ 핵심 인사이트
 
-Neural Network는 sampling보다 원본 데이터 보존 + 튜닝 조합에서 성능 극대화
-
-SMOTE는 Recall은 올리지만 Precision을 0.29 수준으로 만들며 F1 급락
-
-모델 자체의 표현력이 강해 class_weight 없이도 원본 패턴 학습에 유리함
+- Neural Network는 sampling보다 원본 데이터 보존 + 튜닝 조합에서 성능 극대화.
+- SMOTE는 Recall은 올리지만 Precision을 0.29 수준으로 만들며 F1 급락.
+- 모델 자체의 표현력이 강해 class_weight 없이도 원본 패턴 학습에 유리함.
 
 
 
 ## 8. 모델 간 성능 종합 비교 & 관찰된 패턴
 🔎 1) Logistic Regression
 
-→ 선형성의 한계로 가장 낮은 성능(약 0.52)
-→ 데이터의 복잡한 패턴을 충분히 설명하지 못함
+- 선형성의 한계로 가장 낮은 성능.
+- 데이터의 복잡한 패턴을 충분히 설명하지 못함.
+
 
 🔎 2) Random Forest vs Boosting
 
-
 Random Forest
-
-다수결(Bagging) 기반 → 보수적인 예측
-
-Precision이 매우 높아 안정적
+- 다수결(Bagging) 기반 → 보수적인 예측.
+- Precision이 매우 높아 안정적.
 
 Boosting
+- 오답에 집중해 가중치 조정 → 희소 패턴을 적극 학습.
+- Recall이 압도적으로 높음.
 
-오답에 집중해 가중치 조정 → 희소 패턴을 적극 학습
+- 점수만 보면 RF가 소폭 우위지만, 연체자를 놓치는 비용(Recall)이 크다면 Boosting이 더 적절할 수 있음
 
-Recall이 압도적으로 높음
-
-점수만 보면 RF가 소폭 우위지만,
-연체자를 놓치는 비용(Recall)이 크다면 Boosting이 더 적절할 수 있음
 
 🔎 3) Boosting & Neural Network의 성능 수렴
 
 구조는 다르지만 두 모델 모두
-
-f1
-
-recall
-
-pr-auc
-
-roc-auc
-
-모두 비슷한 수준으로 수렴함.
+f1, recall, pr-auc, roc-auc 모두 비슷한 수준으로 수렴함.
 
 👉 이는 데이터가 허용하는 성능 상한선에 도달했을 가능성을 시사.
 
@@ -220,16 +216,18 @@ roc-auc
 📌 인위적 데이터 증강(SMOTE, CC)은
 → Logistic Regression을 제외하면 대부분의 모델에서 성능을 저하시켰다.
 
+
 📌 Random Forest, Boosting, Neural Network 모두
 → Class Weight 또는 Hyperparameter 튜닝 기반 접근이 압도적으로 효과적
 
+
 📌 모델 선택은 “성능이 제일 높은 모델”이 아니라
-→ **클라이언트의 목표(Precision vs Recall 중 무엇을 우선하느냐)**에 따라 달라진다.
+→ 클라이언트의 목표(Precision vs Recall 중 무엇을 우선하느냐)에 따라 달라진다.
 
-📌 핵심 결론 및 토론
 
--불균형 데이터에서 무작정 데이터를 늘리는 것보다
-모델이 어떤 부분에 민감하게 반응해야 하는지 조절하는 전략이 더 중요
+🔥 핵심 결론 및 토론
+
+-불균형 데이터에서 무작정 데이터를 늘리는 것보다 모델이 어떤 부분에 민감하게 반응해야 하는지 조절하는 전략이 더 중요
 
 -동일한 점수라도 해석과 목표 설정이 더 중요
 
@@ -237,14 +235,17 @@ roc-auc
 
 ## 10. 기여
 김서현 — Boosting 모델 실험, 공통 파이프라인 개발
+
 박병선 — Logistic Regression 실험 및 튜닝 개발
+
 박채아 — Neural Network 실험 및 데이터 전처리
+
 김채원 — Random Forest 실험 및 데이터 전처리
 
 
 
 ## 11. 기타
-Commit 컨벤션
+✏️ Commit 컨벤션
 
 - **feat**: 새로운 기능 추가
 - **fix**: 버그 수정
