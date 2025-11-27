@@ -1,13 +1,10 @@
 # CreditCard-Risk-Scoring
-2025 홍익대학교 기계학습기초 팀플 레포입니다.
+📌 Default Credit Card Clients — 신용카드 연체 예측 모델 비교 연구
 
-## 📌 Default Credit Card Clients — 신용카드 연체 예측 모델 비교 연구
+2025 홍익대학교 기계학습기초 팀 프로젝트
 
-
-2025 기계학습기초 팀 프로젝트
 팀원: 김서현, 박병선, 박채아, 김채원
 
----
 
 ## 1. 프로젝트 개요
 
@@ -22,13 +19,13 @@
 
 또한 불균형 문제 해결을 위해 다음 두 접근을 실험적으로 비교했습니다:
 
-Sampling 기반 데이터 증강 (SMOTE, Cluster Centroids)
+- Sampling 기반 데이터 증강 (SMOTE, Cluster Centroids)
 
-Class Weight 기반의 모델 가중치 조정
+- Class Weight 기반의 모델 가중치 조정
 
 이 두 전략이 서로 다른 모델에서 어떤 영향을 주는지 정량적으로 비교하는 것이 핵심 목표였습니다.
 
----
+
 ## 2. 실험 파이프라인 설계
 🔧 기술적 핵심 — 공정성(Consistency)
 
@@ -37,22 +34,22 @@ Class Weight 기반의 모델 가중치 조정
 
 파이프라인 구성 요소
 
-통합 전처리 파이프라인
+1) 통합 전처리 파이프라인
 
-Config 기반 실험 환경(config.yaml)
+2) Config 기반 실험 환경(config.yaml)
 
-공통 RandomizedSearchCV 코드
+3) 공통 RandomizedSearchCV 코드
 
-동일한 train/test split & 5-Fold Stratified CV 적용
+4) 동일한 train/test split & 5-Fold Stratified CV 적용
 
-Threshold Optimization 공통 적용
+5) Threshold Optimization 공통 적용
 
-이 구조 덕분에 각 모델이 완전히 동일한 환경에서 평가되도록 보장했습니다.
+이러한 구조를 구축하여 각 모델이 완전히 동일한 환경에서 평가되도록 보장했습니다.
 
----
+
 
 ## 3. 폴더링
-
+```
 ml-project/
 ├─ data/                       # 원본/가공 데이터
 ├─ common/
@@ -64,55 +61,48 @@ ml-project/
 │  ├─ random_forest.py         # build_model() 구현
 │  ├─ xgboost_lightgbm.py      # build_model() 구현(둘 다 리턴 가능)
 │  └─ mlp.py                   # build_model() 구현
-├─ run_benchmark.py            # 모델들 불러와 공통 평가 러너
+├─ run_benchmark.py            # 모델들 호출 후 공통 평가
 └─ config.yaml                 # 공통 하이퍼파라미터/실험 설정(선택)
+```
 
----
 
 ## 4. 데이터 전처리
-🎛 변수 유형별 처리
-
+변수 유형별 처리
 
 변수 유형	처리 방식
-명목형 변수	One-Hot Encoding
-순서형 변수	Ordinal Encoding(순서를 유지)
-수치형 변수	Imputation, IQR Clipping, StandardScaler
+- 명목형 변수:	One-Hot Encoding
+- 순서형 변수:	Ordinal Encoding(순서를 유지)
+- 수치형 변수:	Imputation, IQR Clipping, StandardScaler
+
 추가 옵션
+- PCA(Optional)
+- Sampling(Optional): SMOTE / Cluster Centroids
 
-PCA(Optional)
+모든 실험 옵션은 config.yaml에서 On/Off 가능하도록 설계해 모델별 실험 유연성을 확보했습니다.
 
-Sampling(Optional): SMOTE / Cluster Centroids
 
-모든 실험 옵션은 config.yaml에서 On/Off 가능하도록 설계해
-모델별 실험 유연성을 확보했습니다.
-
----
 
 ## 5. 검증 전략
 
 약 30,000건 규모의 데이터를 고려하여,
-데이터 분포를 유지하면서 신뢰도를 확보하기 위해
-📌 Stratified 5-Fold Cross Validation을 적용했습니다.
+데이터 분포를 유지하면서 신뢰도를 확보하기 위해 📌 Stratified 5-Fold Cross Validation을 적용했습니다.
 
----
+
 
 ## 6. 5단계 실험 프로세스
 
 
-Baseline 측정 (튜닝 없음)
+1) Baseline 측정 (튜닝 없음)
 
-RandomizedSearchCV 기반 1차 튜닝
+2) RandomizedSearchCV 기반 1차 튜닝
 
-Grid Search + Fine-tuning
+3) Grid Search + Fine-tuning
 
-SMOTE 적용 성능 측정
+4) SMOTE 적용 성능 측정
 
-Cluster Centroids 적용 성능 측정
+5) Cluster Centroids 적용 성능 측정
 
-튜닝 기준은 PR-AUC,
-최종 성능 평가는 모든 모델에 대해 최적 Threshold 적용 F1-score로 비교했습니다.
-
----
+튜닝 기준은 PR-AUC, 최종 성능 평가는 모든 모델에 대해 최적 Threshold 적용 F1-score로 비교했습니다.
 
 ## 7. 모델별 실험 결과 및 주요 인사이트
 ◆ 7-1. Logistic Regression
@@ -181,7 +171,7 @@ SMOTE는 Recall은 올리지만 Precision을 0.29 수준으로 만들며 F1 급�
 
 모델 자체의 표현력이 강해 class_weight 없이도 원본 패턴 학습에 유리함
 
----
+
 
 ## 8. 모델 간 성능 종합 비교 & 관찰된 패턴
 🔎 1) Logistic Regression
@@ -223,7 +213,7 @@ roc-auc
 
 👉 이는 데이터가 허용하는 성능 상한선에 도달했을 가능성을 시사.
 
----
+
 
 ## 9. 최종 결론
 
@@ -243,7 +233,7 @@ roc-auc
 
 -동일한 점수라도 해석과 목표 설정이 더 중요
 
----
+
 
 ## 10. 기여
 김서현 — Boosting 모델 실험, 공통 파이프라인 개발
@@ -251,7 +241,7 @@ roc-auc
 박채아 — Neural Network 실험 및 데이터 전처리
 김채원 — Random Forest 실험 및 데이터 전처리
 
----
+
 
 ## 11. 기타
 Commit 컨벤션
