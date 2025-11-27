@@ -1,5 +1,5 @@
-# Default-Risk-Scoring
-기계학습기초 팀플 레포입니다.
+# CreditCard-Risk-Scoring
+2025 홍익대학교 기계학습기초 팀플 레포입니다.
 
 
 
@@ -8,7 +8,7 @@
 ```
 
 ml-project/
-├─ data/                       # 원본/가공 데이터 (필요시)
+├─ data/                       # 원본/가공 데이터
 ├─ common/
 │  ├─ preprocessing.py         # 공통 ColumnTransformer/SMOTE 스위치 등
 │  └─ evaluation.py            # 공통 CV, 메트릭(ROC-AUC, PR-AUC, 리포트)
@@ -55,16 +55,14 @@ ml-project/
 
 본 프로젝트는 **신용카드 고객들의 연체 여부(default)**를 예측하는 머신러닝 모델을 비교·분석하는 것을 목표로 진행되었습니다.
 
-사용한 데이터는 Kaggle의 Default of Credit Card Clients Dataset이며,
+사용한 데이터는 Kaggle UCI의 Default of Credit Card Clients Dataset이며,
 전체 약 22만 건 중 연체자 비율이 약 2:8로 구성된 대표적인 불균형 데이터셋입니다.
-(PPT 2p 내용 반영 )
 
 이러한 불균형 문제 때문에 단순 Accuracy가 아닌,
 **연체자를 놓치지 않는 ‘Recall’**과 **잘못된 경보를 줄이는 ‘Precision’**을 균형 있게 반영하는
 📌 F1-score를 최우선 평가 지표로 채택했습니다.
-(PPT 3p의 F1 설명 반영 )
 
-또한 우리는 불균형 문제 해결을 위해 다음 두 접근을 실험적으로 비교했습니다:
+또한 불균형 문제 해결을 위해 다음 두 접근을 실험적으로 비교했습니다:
 
 Sampling 기반 데이터 증강 (SMOTE, Cluster Centroids)
 
@@ -77,7 +75,6 @@ Class Weight 기반의 모델 가중치 조정
 
 4개의 모델(Logistic Regression, Random Forest, XGBoost/LightGBM, Neural Network)을
 동일한 조건에서 비교하기 위해 자동화된 파이프라인을 구축했습니다.
-(PPT 5p Pipeline 구조 반영 )
 
 파이프라인 구성 요소
 
@@ -96,7 +93,6 @@ Threshold Optimization 공통 적용
 3. 데이터 전처리
 🎛 변수 유형별 처리
 
-(PPT 6–7p 전처리 구조 반영 )
 
 변수 유형	처리 방식
 명목형 변수	One-Hot Encoding
@@ -107,7 +103,6 @@ Threshold Optimization 공통 적용
 PCA(Optional)
 
 Sampling(Optional): SMOTE / Cluster Centroids
-(PPT 8p 반영 )
 
 모든 실험 옵션은 config.yaml에서 On/Off 가능하도록 설계해
 모델별 실험 유연성을 확보했습니다.
@@ -117,11 +112,9 @@ Sampling(Optional): SMOTE / Cluster Centroids
 약 30,000건 규모의 데이터를 고려하여,
 데이터 분포를 유지하면서 신뢰도를 확보하기 위해
 📌 Stratified 5-Fold Cross Validation을 적용했습니다.
-(PPT 9p 반영 )
 
 5. 5단계 실험 프로세스
 
-(PPT 10p 구조 그대로 반영 )
 
 Baseline 측정 (튜닝 없음)
 
@@ -139,7 +132,6 @@ Cluster Centroids 적용 성능 측정
 6. 모델별 실험 결과 및 주요 인사이트
 ◆ 6-1. Logistic Regression
 
-(PPT 13–20p 그래프 및 내용 기반 정리 )
 
 단계	F1-score
 Baseline	0.4804
@@ -158,7 +150,6 @@ Logistic Regression에서는 Threshold 최적화 + 미세 조정(C, class_weight
 
 ◆ 6-2. Random Forest
 
-(PPT에서 직접 언급되지 않은 구체 성능은 텍스트 기반)
 
 단계	F1-score
 Baseline	0.5198
@@ -213,7 +204,6 @@ SMOTE는 Recall은 올리지만 Precision을 0.29 수준으로 만들며 F1 급�
 
 🔎 2) Random Forest vs Boosting
 
-(PPT에서도 설명된 Precision vs. Recall trade-off 반영 )
 
 Random Forest
 
@@ -257,25 +247,14 @@ roc-auc
 📌 모델 선택은 “성능이 제일 높은 모델”이 아니라
 → **클라이언트의 목표(Precision vs Recall 중 무엇을 우선하느냐)**에 따라 달라진다.
 
-📌 이번 프로젝트를 통해 배운 핵심
+📌 핵심 결론 및 토론
 
-불균형 데이터에서 무작정 데이터를 늘리는 것보다
+-불균형 데이터에서 무작정 데이터를 늘리는 것보다
 모델이 어떤 부분에 민감하게 반응해야 하는지 조절하는 전략이 더 중요
 
-동일한 점수라도 해석과 목표 설정이 더 중요
+-동일한 점수라도 해석과 목표 설정이 더 중요
 
-9. 파일 구조 예시 (선택사항)
-project/
-│── data/
-│── src/
-│   ├── preprocess.py
-│   ├── run_benchmark.py
-│   ├── models/
-│   ├── tuning/
-│── config.yaml
-│── README.md
-
-10. 기여
+9. 기여
 김서현 — Boosting 모델 실험, 공통 파이프라인 개발
 박병선 — Logistic Regression 실험 및 튜닝 개발
 박채아 — Neural Network 실험 및 데이터 전처리
