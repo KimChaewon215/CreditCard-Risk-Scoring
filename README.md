@@ -98,7 +98,7 @@ ml-project/
 
 5) Cluster Centroids 적용 성능 측정
 
-튜닝 기준은 PR-AUC, 최종 성능 평가는 모든 모델에 대해 최적 Threshold 적용 F1-score로 비교했습니다.
+튜닝 및 최종 성능 평가는 모든 모델에 대해 최적 Threshold 적용 F1-score로 비교했습니다.
 
 ## 7. 모델별 실험 결과 및 주요 인사이트
 
